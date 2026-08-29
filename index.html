@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="theme-color" content="#050608" />
+  <title>Night Shift: Sector 13</title>
+  <style>
+    :root{color-scheme:dark;--safe:env(safe-area-inset-bottom);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#030405;color:#eee;touch-action:none}
+    canvas{display:block;width:100%;height:100%}
+    #hud{position:fixed;inset:0;pointer-events:none;z-index:3;text-shadow:0 1px 4px #000}
+    #top{position:absolute;top:max(14px,env(safe-area-inset-top));left:14px;right:14px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+    .panel{background:rgba(0,0,0,.36);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(8px);border-radius:12px;padding:10px 12px}
+    #objective{font-size:14px;line-height:1.35;max-width:270px}
+    #status{font-size:12px;text-align:right;opacity:.9}
+    #centerPrompt{position:absolute;left:50%;top:58%;transform:translate(-50%,-50%);font-weight:700;font-size:16px;letter-spacing:.02em;text-align:center;opacity:0;transition:opacity .15s}
+    #crosshair{position:absolute;left:50%;top:50%;width:8px;height:8px;border:1px solid rgba(255,255,255,.8);border-radius:50%;transform:translate(-50%,-50%);opacity:.7}
+    #message{position:absolute;left:50%;top:23%;transform:translateX(-50%);font-size:15px;font-weight:800;text-align:center;opacity:0;transition:opacity .25s;width:min(85vw,480px)}
+    #danger{position:absolute;inset:0;background:radial-gradient(circle at center,transparent 30%,rgba(110,0,0,.05) 55%,rgba(150,0,0,.7));opacity:0;transition:opacity .12s}
+    #vignette{position:absolute;inset:0;background:radial-gradient(circle at center,transparent 40%,rgba(0,0,0,.15) 65%,rgba(0,0,0,.78) 100%)}
+    #mobile{position:fixed;inset:0;z-index:4;pointer-events:none;display:none}
+    .stick{position:absolute;width:138px;height:138px;border-radius:50%;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.025);pointer-events:auto;touch-action:none}
+    #move{left:18px;bottom:calc(20px + var(--safe))}
+    #look{right:18px;bottom:calc(20px + var(--safe));background:rgba(255,255,255,.012)}
+    .nub{position:absolute;left:50%;top:50%;width:54px;height:54px;border-radius:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2)}
+    #actions{position:absolute;right:22px;bottom:calc(172px + var(--safe));display:flex;gap:10px;pointer-events:auto}
+    .btn{min-width:58px;height:58px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.48);color:white;font-weight:800;font-size:12px;backdrop-filter:blur(8px)}
+    #interact{display:none;background:rgba(95,20,20,.62)}
+    #start,#death,#win{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,#15191b 0,#07090a 48%,#010202 100%);padding:24px}
+    .card{width:min(92vw,520px);padding:28px 24px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(0,0,0,.58);box-shadow:0 24px 80px #000;text-align:center}
+    h1{font-size:clamp(30px,8vw,54px);margin:0 0 4px;letter-spacing:.02em} h2{margin:0 0 10px;font-size:28px}
+    .red{color:#d85151}.muted{color:#a8aeb1}.small{font-size:13px;line-height:1.45}
+    .primary{width:100%;margin-top:18px;padding:14px 18px;border:0;border-radius:12px;background:#d8d7d2;color:#111;font-weight:900;font-size:16px}
+    .secondary{width:100%;margin-top:10px;padding:12px 18px;border:1px solid rgba(255,255,255,.15);border-radius:12px;background:#151719;color:#ddd;font-weight:700}
+    #death,#win{display:none;background:rgba(0,0,0,.88)}
+    #desktopHelp{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:4;font-size:12px;color:#a8aeb1;background:rgba(0,0,0,.45);padding:8px 11px;border-radius:10px;pointer-events:none}
+    @media(pointer:coarse),(max-width:800px){#mobile{display:block}#desktopHelp{display:none}#crosshair{opacity:.5}}
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+  <div id="hud">
+    <div id="danger"></div><div id="vignette"></div>
+    <div id="top"><div id="objective" class="panel"></div><div id="status" class="panel"></div></div>
+    <div id="message"></div><div id="crosshair"></div><div id="centerPrompt"></div>
+  </div>
+  <div id="mobile">
+    <div id="move" class="stick"><div class="nub"></div></div>
+    <div id="look" class="stick"><div class="nub"></div></div>
+    <div id="actions"><button id="flash" class="btn">LIGHT</button><button id="interact" class="btn">USE</button></div>
+  </div>
+  <div id="desktopHelp">WASD move · Mouse look · E interact · F flashlight · Shift sprint</div>
+  <div id="start"><div class="card"><div class="muted small">A SHORT 3D HORROR GAME</div><h1>NIGHT SHIFT</h1><div class="red" style="font-weight:900;letter-spacing:.24em">SECTOR 13</div><p class="muted">Restore three breakers. Open the exit. Do not let it see you for long.</p><p class="small muted" id="saveSummary"></p><button class="primary" id="play">ENTER SECTOR 13</button><button class="secondary" id="reset">RESET SAVE</button><p class="small muted">Headphones recommended. Progress saves automatically on this device.</p></div></div>
+  <div id="death"><div class="card"><h2 class="red">IT FOUND YOU.</h2><p class="muted">The sector reset, but repaired breakers were saved.</p><button class="primary" id="retry">TRY AGAIN</button></div></div>
+  <div id="win"><div class="card"><h2>YOU GOT OUT.</h2><p class="muted" id="winText"></p><button class="primary" id="again">PLAY AGAIN</button></div></div>
+  <script type="module" src="./game.js"></script>
+</body>
+</html>
